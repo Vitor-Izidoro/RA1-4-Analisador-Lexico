@@ -70,13 +70,11 @@ class TestAnalisadorLexico(unittest.TestCase):
         self.assertEqual(tokens[1].tipo, TokenType.ERRO)
 
     def test_parenteses_desbalanceados_lexico(self):
-
         linha = "((3.14 2.0 +)"
         tokens = parseExpressao(linha)
         
-        self.assertEqual(tokens[0].valor, "(")
-        self.assertEqual(tokens[1].valor, "(")
-        self.assertEqual(tokens[-1].valor, ")")
+        self.assertEqual(tokens[-1].tipo, TokenType.ERRO)
+        self.assertEqual(tokens[-1].valor, "PARENTESES_DESBALANCEADOS")
 
 
 if __name__ == '__main__':

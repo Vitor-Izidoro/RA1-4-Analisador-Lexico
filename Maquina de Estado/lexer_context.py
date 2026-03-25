@@ -8,6 +8,7 @@ class LexerContext:
         self.posicao = 0
         self.buffer = ""
         self.tokens = []
+        self.parenteses = 0
 
     def char_atual(self) -> str:
         if self.posicao < len(self.texto):

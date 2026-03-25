@@ -2,7 +2,7 @@
 
 from lexer_context import LexerContext
 from states import estadoInicial
-from tokens import TokenType
+from tokens import TokenType, Token
 import json
 
 def parseExpressao(linha: str) -> list:
@@ -12,15 +12,16 @@ def parseExpressao(linha: str) -> list:
     
     while estado_atual is not None:
         estado_atual = estado_atual(ctx)
-        
+
         if ctx.tokens and ctx.tokens[-1].tipo == TokenType.ERRO:
-            print(f"Erro Léxico encontrado na palavra: {ctx.tokens[-1].valor}")
-            break
-            
+            print(f"Erro Léxico encontrado: {ctx.tokens[-1].valor}")
+
+    if ctx.parenteses != 0:
+        ctx.tokens.append(Token(TokenType.ERRO, "PARENTESES_DESBALANCEADOS"))
+
     return ctx.tokens
 
-def salvar_tokens_json(dados_para_salvar: dict, nome_arquivo: str = "tokens_ultima_execucao.txt"):
-
+def salvar_tokens_json(dados_para_salvar: list, nome_arquivo: str = "tokens_ultima_execucao.txt"):
     with open(nome_arquivo, 'w', encoding='utf-8') as arquivo:
         json.dump(dados_para_salvar, arquivo, indent=4, ensure_ascii=False)
     print(f"\n[+] Última execução salva com sucesso no arquivo '{nome_arquivo}'")
@@ -37,7 +38,7 @@ if __name__ == "__main__":
         "((((((12345.6789 9876.5432 *) (0.0001 2.0 /) +) (100.0 3.0 //) -) (45.0 6.0 %) *) 2.0 ^) (MEGA_VAR MEM) (1 RES))"
     ]
 
-    ultimo_bloco = {}
+    todos_os_blocos = []
 
     for linha in testes:
         print(f"\nAnalisando: {linha}")
@@ -49,11 +50,11 @@ if __name__ == "__main__":
             
         tokens_formatados = [{"tipo": t.tipo.name, "valor": t.valor} for t in tokens]
         
-
-        ultimo_bloco = {
+        bloco_atual = {
             "expressao": linha,
             "tokens": tokens_formatados
         }
+        todos_os_blocos.append(bloco_atual)
 
-    if ultimo_bloco:
-        salvar_tokens_json(ultimo_bloco)
+    if todos_os_blocos:
+        salvar_tokens_json(todos_os_blocos)
