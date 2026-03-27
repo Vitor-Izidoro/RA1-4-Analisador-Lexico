@@ -61,4 +61,4 @@ O projeto possui um orquestrador central (`main.py`) que gerencia todo o fluxo d
 
 **Exemplo de comando:**
 ```bash
-python main.py "assembly copy/arquivosTeste/teste_boss_final.txt"
+python main.py "assembly copy/arquivosTeste/teste_arquitetura.txt"
