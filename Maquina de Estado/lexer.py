@@ -1,5 +1,15 @@
 # Codigo principal da maquina de estado
-
+# =============================================================================
+#  Integrantes:
+#    [Nome completo] - [GitHub]
+#    Crystofer Demetino dos Santos - CrySamuel
+#    Gabriel Simini - GalSimini
+#    Vitor Rodrigues Izidoro - vitor-izidoro
+#
+#  Grupo no Canvas: RA1-4
+#  Disciplina: Interpretadores B - Noite
+#  Professor: Frank Coelho de Alcântara
+# =============================================================================
 from lexer_context import LexerContext
 from states import estadoInicial
 from tokens import TokenType, Token

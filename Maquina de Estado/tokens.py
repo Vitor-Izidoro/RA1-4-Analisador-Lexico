@@ -1,5 +1,15 @@
 # Vocabulario de tokens para a máquina de estado do interpretador de expressões matemáticas
-
+# =============================================================================
+#  Integrantes:
+#    [Nome completo] - [GitHub]
+#    Crystofer Demetino dos Santos - CrySamuel
+#    Gabriel Simini - GalSimini
+#    Vitor Rodrigues Izidoro - vitor-izidoro
+#
+#  Grupo no Canvas: RA1-4
+#  Disciplina: Interpretadores B - Noite
+#  Professor: Frank Coelho de Alcântara
+# =============================================================================
 from enum import Enum
 from dataclasses import dataclass
 

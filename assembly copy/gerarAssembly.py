@@ -134,16 +134,20 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         """Cria a constante f64 no .data apenas uma vez; reutiliza nas demais."""
         nonlocal contador_const
         try:
-            normalizado = repr(float(valor_str))
+            # Convertemos para float para garantir que o Python trate como decimal
+            valor_numerico = float(valor_str)
+            # 'repr' ou f-string com float garante o ".0" (ex: 1.0)
+            normalizado = repr(valor_numerico)
         except ValueError:
             normalizado = valor_str
+
         if normalizado not in const_cache:
             nome = f"const_{contador_const}"
             const_cache[normalizado] = nome
-            data_lines.extend([".balign 8", f"{nome}: .double {valor_str}"])
+            # AQUI ESTAVA O ERRO: Use 'normalizado' em vez de 'valor_str'
+            data_lines.extend([".balign 8", f"{nome}: .double {normalizado}"])
             contador_const += 1
         return const_cache[normalizado]
-
     def ensure_var_memoria(nome: str) -> str:
         """Reserva espaço f64 no .data para a variável, se ainda não existe."""
         if nome not in vars_memoria:
@@ -340,51 +344,37 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
             if t.tipo == TokenType.MEMORIA:
                 if t.valor == "MEM":
                     if pending_mem_var is None:
-                        raise ValueError(f"Linha {linha_idx + 1}: 'MEM' sem variável precedente")
-                    
-                    # O valor já foi calculado e está no topo da FPU stack
+                        raise ValueError(f"Linha {linha_idx + 1}: 'MEM' sem variável.")
                     emit_store_var(pending_mem_var, linha_idx)
                     pending_mem_var = None
-                    last_literal = None
-                    i += 1
-                    continue
-
-                proximo = peek_next_significant(tokens, i + 1)
-
-                # Nova regra: O único caso onde NÃO fazemos Load imediato é se o próximo for explicitamente "MEM"
-                if proximo is not None and proximo.tipo == TokenType.MEMORIA and proximo.valor == "MEM":
-                    pending_mem_var = t.valor
                 else:
-                    # Para qualquer outro cenário (operador, número, fechamento de parêntese), é um Load
-                    emit_load_var(t.valor)
-
-                last_literal = None
+                    proximo = peek_next_significant(tokens, i + 1)
+                    # Se o próximo for 'MEM', preparamos para o Store
+                    if proximo and proximo.tipo == TokenType.MEMORIA and proximo.valor == "MEM":
+                        pending_mem_var = t.valor
+                    else:
+                        # Caso contrário, é um LOAD puro
+                        emit_load_var(t.valor)
                 i += 1
                 continue
 
-            # --- Comando RES ---
-            # --- Comando RES ---
+            # --- Comando RES Dinâmico ---
             if t.tipo == TokenType.COMANDO and t.valor == "RES":
-                stack_depth -= 1  # Retiramos o 'N' da pilha lógica
-                
+                stack_depth -= 1 
                 text_lines.extend([
                     "    @ --- COMANDO RES DINÂMICO ---",
-                    "    vpop.f64 {d0}                @ Desempilha N (f64) para d0",
-                    "    vcvtr.s32.f64 s0, d0         @ Converte N para inteiro (s32) em s0",
-                    "    vmov r1, s0                  @ Move o N inteiro para r1",
-                    f"    mov r2, #{linha_idx}         @ r2 = índice da linha atual",
-                    "    subs r3, r2, r1              @ r3 = linha_atual - N",
-                    "    @ Limita a 0 caso r3 < 0 para evitar segmentation fault",
+                    "    vpop.f64 {d0}",
+                    "    vcvtr.s32.f64 s0, d0",
+                    "    vmov r1, s0",
+                    f"    mov r2, #{linha_idx}",
+                    "    subs r3, r2, r1",
                     "    cmp r3, #0",
                     "    movlt r3, #0",
-                    "    @ Calcula o endereço usando r11 (base de results)",
-                    "    add r4, r11, r3, lsl #3      @ r4 = results + (r3 * 8 bytes)",
-                    "    vldr.f64 d0, [r4]            @ Carrega o resultado antigo para d0",
-                    "    vpush.f64 {d0}               @ Empilha o resultado recuperado",
+                    "    add r4, r11, r3, lsl #3",
+                    "    vldr.f64 d0, [r4]",
+                    "    vpush.f64 {d0}",
                 ])
-                
-                stack_depth += 1  # Empurramos o resultado recuperado de volta para a pilha lógica
-                last_literal = None
+                stack_depth += 1
                 i += 1
                 continue
 

@@ -1,5 +1,15 @@
 # Este arquivo contém testes unitários para o analisador léxico (lexer) da máquina de estados.
-
+# =============================================================================
+#  Integrantes:
+#    [Nome completo] - [GitHub]
+#    Crystofer Demetino dos Santos - CrySamuel
+#    Gabriel Simini - GalSimini
+#    Vitor Rodrigues Izidoro - vitor-izidoro
+#
+#  Grupo no Canvas: RA1-4
+#  Disciplina: Interpretadores B - Noite
+#  Professor: Frank Coelho de Alcântara
+# =============================================================================
 import unittest
 from tokens import TokenType
 from lexer import parseExpressao

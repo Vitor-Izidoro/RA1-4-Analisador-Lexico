@@ -1,3 +1,14 @@
+# =============================================================================
+#  Integrantes:
+#    [Nome completo] - [GitHub]
+#    Crystofer Demetino dos Santos - CrySamuel
+#    Gabriel Simini - GalSimini
+#    Vitor Rodrigues Izidoro - vitor-izidoro
+#
+#  Grupo no Canvas: RA1-4
+#  Disciplina: Interpretadores B - Noite
+#  Professor: Frank Coelho de Alcântara
+# =============================================================================
 from tokens import TokenType
 
 # Nova função auxiliar: resolve o valor apenas na hora exata de usar (Lazy Evaluation)
