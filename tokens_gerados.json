@@ -1,0 +1,441 @@
+[
+    {
+        "linha": 1,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "12.0"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "4.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "*"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 2,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "100.0"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "8.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "/"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 3,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "1"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "2"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "+"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 4,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "2.0"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "5.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "^"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 5,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "1"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "2"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "%"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 6,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "60.0"
+            },
+            {
+                "tipo": "MEMORIA",
+                "valor": "BASE"
+            },
+            {
+                "tipo": "MEMORIA",
+                "valor": "MEM"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 7,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "MEMORIA",
+                "valor": "BASE"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "4.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "/"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 8,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "1"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "3.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "^"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 9,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "1"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "3"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "/"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "2.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "*"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 10,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "MEMORIA",
+                "valor": "BASE"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "2"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "+"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    },
+    {
+        "linha": 11,
+        "tokens": [
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "1"
+            },
+            {
+                "tipo": "COMANDO",
+                "valor": "RES"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "NUMERO_REAL",
+                "valor": "4.0"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "//"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": "("
+            },
+            {
+                "tipo": "MEMORIA",
+                "valor": "BASE"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            },
+            {
+                "tipo": "OPERADOR",
+                "valor": "%"
+            },
+            {
+                "tipo": "PARENTESES",
+                "valor": ")"
+            }
+        ]
+    }
+]
