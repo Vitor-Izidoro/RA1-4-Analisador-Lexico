@@ -1,38 +1,45 @@
 from tokens import TokenType
 
-# Função auxiliar idêntica à do gerarAssembly.py para olhar o próximo token
-def peek_next_significant(tokens, start):
-    for j in range(start, len(tokens)):
-        if tokens[j].tipo not in (TokenType.PARENTESES, TokenType.EOF):
-            return tokens[j]
-    return None
+# Nova função auxiliar: resolve o valor apenas na hora exata de usar (Lazy Evaluation)
+def resolver_valor(item, memoria_global):
+    """
+    Se o item for uma referência a uma variável (ex: ("VAR", "TOTAL")),
+    busca o valor real no dicionário. Caso contrário, retorna o próprio número.
+    """
+    if isinstance(item, tuple) and item[0] == "VAR":
+        return memoria_global.get(item[1], 0.0) # Retorna 0.0 se a variável não existir (spec do professor)
+    return float(item)
+
 
 def executarExpressao(tokens, memoria_global, historico_resultados, linha_atual):
     pilha = []
-    pending_mem_var = None
     
     i = 0
     while i < len(tokens):
         t = tokens[i]
         
-        # 1. Ignora parênteses, ERROS e EOF (o Lexer já validou antes)
+        # 1. Ignora parênteses, ERROS e EOF
         if t.tipo in (TokenType.PARENTESES, TokenType.EOF, TokenType.ERRO):
             i += 1
             continue
             
-        # 2. Números vão direto para a pilha (como float para simular IEEE 754 de 64 bits)
+        # 2. Números vão direto para a pilha
         if t.tipo == TokenType.NUMERO_REAL:
             pilha.append(float(t.valor))
             i += 1
             continue
             
-        # 3. Operadores desempilham os últimos 2 números e calculam
+        # 3. Operadores desempilham os últimos 2 itens (resolvem variáveis se houver) e calculam
         if t.tipo == TokenType.OPERADOR:
             if len(pilha) < 2:
                 raise ValueError(f"Faltam operandos para o operador '{t.valor}'")
             
-            b = pilha.pop() # Último da pilha
-            a = pilha.pop() # Penúltimo da pilha
+            b_raw = pilha.pop() # Último da pilha
+            a_raw = pilha.pop() # Penúltimo da pilha
+            
+            # Resolve os valores reais ANTES da matemática (caso sejam variáveis)
+            b = resolver_valor(b_raw, memoria_global)
+            a = resolver_valor(a_raw, memoria_global)
             
             op = t.valor
             if op == '+':
@@ -46,11 +53,11 @@ def executarExpressao(tokens, memoria_global, historico_resultados, linha_atual)
                 resultado = a / b
             elif op == '//':
                 if b == 0: raise ValueError("Erro: Divisão por zero")
-                # int(a/b) trunca em direção ao zero, imitando a instrução vcvtr.s32 do ARM
+                # Trunca em direção ao zero, imitando vcvtr.s32 do ARM
                 resultado = float(int(a / b)) 
             elif op == '%':
                 if b == 0: raise ValueError("Erro: Divisão por zero")
-                # Lógica do ARM: a - (b * trunc(a/b))
+                # a - (b * trunc(a/b))
                 resultado = a - (b * float(int(a / b)))
             elif op == '^':
                 resultado = float(a ** int(b))
@@ -59,35 +66,36 @@ def executarExpressao(tokens, memoria_global, historico_resultados, linha_atual)
             i += 1
             continue
             
-        # 4. Memória (Load ou Store) - Usando sua heurística do Assembly
+        # 4. Memória (Load ou Store) - Agora usando regras PURAS de Pilha RPN
         if t.tipo == TokenType.MEMORIA:
             if t.valor == "MEM":
-                if pending_mem_var is None:
-                    raise ValueError("Comando 'MEM' sem variável precedente")
+                # É um comando de STORE explícito. 
+                # O formato esperado é (V VARNAME MEM), logo a pilha tem que ter o NOME no topo e o VALOR embaixo.
+                if len(pilha) < 2:
+                    raise ValueError("Comando 'MEM' requer um valor e uma variável na pilha (Ex: 5.0 TOTAL MEM)")
                 
-                # STORE explícito: guarda o topo da pilha no dicionário (sem dar pop!)
-                memoria_global[pending_mem_var] = pilha[-1] 
-                pending_mem_var = None
-                i += 1
-                continue
+                nome_var_raw = pilha.pop()
+                valor_raw = pilha.pop()
                 
-            proximo = peek_next_significant(tokens, i + 1)
-            
-            # Checa se o próximo token será a keyword MEM
-            if proximo is not None and proximo.tipo == TokenType.MEMORIA and proximo.valor == "MEM":
-                pending_mem_var = t.valor
-                i += 1
-                continue
+                # Extrai a string do nome da variável
+                if isinstance(nome_var_raw, tuple) and nome_var_raw[0] == "VAR":
+                    nome_var = nome_var_raw[1]
+                else:
+                    raise ValueError(f"Comando 'MEM' esperava um nome de variável, mas recebeu: {nome_var_raw}")
                 
-            # Heurística implícita: Se o próximo é operador, é um Load
-            if proximo is not None and proximo.tipo == TokenType.OPERADOR:
-                pilha.append(memoria_global.get(t.valor, 0.0))
-            # Se tem valor na pilha e não tem operador pela frente, é um Store
-            elif len(pilha) > 0:
-                memoria_global[t.valor] = pilha[-1] 
-            # Caso contrário, é um Load
+                # Resolve o valor (caso V seja fruto de outra variável ou conta)
+                valor = resolver_valor(valor_raw, memoria_global)
+                
+                # Salva na memória global
+                memoria_global[nome_var] = valor
+                
+                # Mantém o valor salvo na pilha para que a linha tenha um resultado (compatibilidade com seu Assembly)
+                pilha.append(valor)
+                
             else:
-                pilha.append(memoria_global.get(t.valor, 0.0))
+                # É apenas o NOME de uma variável (ex: X, TOTAL). 
+                # Empilha como uma "Referência Preguiçosa" (Lazy Reference). Não tentamos ler nem escrever agora!
+                pilha.append(("VAR", t.valor))
                 
             i += 1
             continue
@@ -97,22 +105,32 @@ def executarExpressao(tokens, memoria_global, historico_resultados, linha_atual)
             if len(pilha) < 1:
                 raise ValueError("Comando 'RES' precisa de um número de offset antes")
             
-            n_linhas = int(pilha.pop())
-            idx_alvo = linha_atual - n_linhas
+            n_raw = pilha.pop()
+            n_linhas = int(resolver_valor(n_raw, memoria_global))
             
-            if idx_alvo < 0 or idx_alvo >= len(historico_resultados):
-                raise ValueError(f"RES tentou acessar a linha de índice {idx_alvo}, que é inválida.")
-            
-            # Carrega o resultado antigo para a pilha atual
-            pilha.append(historico_resultados[idx_alvo])
+            # Tratamento rigoroso e compatível com o Assembly
+            if n_linhas == 0:
+                # Se N=0, a linha atual ainda não acabou. Retorna 0.0 por segurança.
+                pilha.append(0.0)
+            else:
+                idx_alvo = linha_atual - n_linhas
+                
+                if idx_alvo < 0 or idx_alvo >= len(historico_resultados):
+                    raise ValueError(f"RES tentou acessar a linha de índice {idx_alvo}, que é inválida.")
+                
+                # Carrega o resultado antigo para a pilha atual
+                pilha.append(historico_resultados[idx_alvo])
+                
             i += 1
             continue
             
         raise ValueError(f"Token desconhecido ou não tratado: {t}")
 
-    # No final de cada linha, o resultado deve ser o ÚNICO item na pilha
+    # Final da execução da linha
     if len(pilha) == 1:
-        resultado_final = pilha[0]
+        # Pega o item que sobrou e resolve ele de forma definitiva (caso seja só (VARNAME))
+        resultado_final = resolver_valor(pilha[0], memoria_global)
+        
         historico_resultados.append(resultado_final) # Salva para futuros (N RES)
         return resultado_final
     else:

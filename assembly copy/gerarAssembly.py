@@ -58,7 +58,17 @@ def lerArquivo(nomeArquivo: str, linhas: list) -> None:
 # ---------------------------------------------------------------------------
 
 def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
-    
+    """
+    Traduz uma lista de linhas tokenizadas para Assembly ARMv7 (CPUlator DEC1-SOC v16.1).
+
+    Registradores fixos durante toda a execução:
+      r7  = SP base (restaurado no início de cada linha)
+      r9  = contador do loop de potenciação (evita colidir com r1)
+      r10 = &last_result
+      r11 = &results[0]
+      r12 = temporário para offset de results
+    """
+
     if not tokens_por_linha:
         return ""
 
@@ -80,7 +90,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         f"results: .space {num_linhas * 8}",
         ".balign 4",
         "display_lut: .word 0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F, 0x77, 0x7C, 0x39, 0x5E, 0x79, 0x71",
-        ".balign 8",   # garante alinhamento 8 bytes para todas as constantes double seguintes
+        ".balign 8",   # garante alinhamento 8 bytes para todas as constantes double
     ]
 
     # -----------------------------------------------------------------
@@ -123,7 +133,6 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
     def ensure_const_double(valor_str: str) -> str:
         """Cria a constante f64 no .data apenas uma vez; reutiliza nas demais."""
         nonlocal contador_const
-        # Normaliza: 3 → 3.0, 3.14 → 3.14  (evita duplicatas por formato)
         try:
             normalizado = repr(float(valor_str))
         except ValueError:
@@ -160,17 +169,16 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         if stack_depth < 2:
             raise ValueError(f"Linha {linha_idx + 1}: operador '{op}' com apenas {stack_depth} operando(s) na pilha")
         inst = {"+": "vadd.f64", "-": "vsub.f64", "*": "vmul.f64", "/": "vdiv.f64"}[op]
-        # Ordem: d0 = operando esquerdo (empilhado primeiro), d1 = direito
         text_lines.extend([
-            "    vpop.f64 {d1}",   # B (topo)
-            "    vpop.f64 {d0}",   # A
+            "    vpop.f64 {d1}",
+            "    vpop.f64 {d0}",
             f"    {inst} d2, d0, d1",
             "    vpush.f64 {d2}",
         ])
         stack_depth -= 1
 
     def emit_idiv_trunc(linha_idx: int) -> None:
-        """Divisão inteira truncada em direção a zero (floor via vcvtr.s32)."""
+        """Divisão inteira truncada em direção a zero."""
         nonlocal stack_depth
         if stack_depth < 2:
             raise ValueError(f"Linha {linha_idx + 1}: '//' com apenas {stack_depth} operando(s)")
@@ -178,7 +186,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
             "    vpop.f64 {d1}",
             "    vpop.f64 {d0}",
             "    vdiv.f64 d2, d0, d1",
-            "    vcvtr.s32.f64 s4, d2",   # trunca (round-toward-zero)
+            "    vcvtr.s32.f64 s4, d2",
             "    vcvt.f64.s32 d2, s4",
             "    vpush.f64 {d2}",
         ])
@@ -202,7 +210,8 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         stack_depth -= 1
 
     def emit_pow_int(linha_idx: int) -> None:
-        """Potenciação por loop: base^exp onde exp é inteiro positivo; base^0 = 1.0."""
+        """Potenciação por loop: base^exp (exp inteiro positivo); base^0 = 1.0.
+           Usa r9 como contador para não colidir com r1 usado nos stores."""
         nonlocal stack_depth
         if stack_depth < 2:
             raise ValueError(f"Linha {linha_idx + 1}: '^' com apenas {stack_depth} operando(s)")
@@ -210,12 +219,12 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         done_lbl = get_unique_label("pow_done")
         one_lbl  = ensure_const_double("1.0")
         text_lines.extend([
-            "    vpop.f64 {d1}",           # expoente B
-            "    vpop.f64 {d0}",           # base A
-            "    vcvtr.s32.f64 s4, d1",    # s4 = (int)B
-            "    vmov r9, s4",             # r9 = contador (evita colidir com r1)
+            "    vpop.f64 {d1}",
+            "    vpop.f64 {d0}",
+            "    vcvtr.s32.f64 s4, d1",
+            "    vmov r9, s4",             # r9 = contador (não colide com r1)
             f"    ldr r0, ={one_lbl}",
-            "    vldr.f64 d2, [r0]",       # d2 = acumulador = 1.0
+            "    vldr.f64 d2, [r0]",
             "    cmp r9, #0",
             f"    beq {done_lbl}",
             f"{loop_lbl}:",
@@ -228,38 +237,40 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         stack_depth -= 1
 
     def emit_load_var(nome: str) -> None:
+        """Carrega variável da memória e empilha.
+           Usa r6 para o endereço (consistente com emit_store_var)."""
         nonlocal stack_depth
         label = ensure_var_memoria(nome)
         text_lines.extend([
-            f"    ldr r0, ={label}",
-            "    vldr.f64 d0, [r0]",
+            f"    ldr r6, ={label}",       # r6 em vez de r0
+            "    vldr.f64 d0, [r6]",
             "    vpush.f64 {d0}",
         ])
         stack_depth += 1
 
     def emit_store_var(nome: str, linha_idx: int) -> None:
+        """Pop → salva na variável → push de volta (não-destrutivo).
+           Usa r6 para o endereço da variável (r1 pode ser usado pelo linker
+           ao resolver literais longos e causar colisões silenciosas)."""
         nonlocal stack_depth
         if stack_depth < 1:
             raise ValueError(f"Linha {linha_idx + 1}: store em '{nome}' sem valor na pilha")
         label = ensure_var_memoria(nome)
         text_lines.extend([
             "    vpop.f64 {d0}",
-            f"    ldr r1, ={label}",
-            "    vstr.f64 d0, [r1]",
-            "    vpush.f64 {d0}",   # mantém o valor como resultado da linha
+            f"    ldr r6, ={label}",       # r6 em vez de r1
+            "    vstr.f64 d0, [r6]",
+            "    vpush.f64 {d0}",
         ])
-        # stack_depth não muda: pop → push
 
     def emit_load_result(idx: int, linha_atual: int) -> None:
-        """Carrega results[idx] na pilha para o comando (N RES)."""
+        """Carrega results[idx] na pilha usando r11 fixo (sem literal pool)."""
         nonlocal stack_depth
         if idx < 0:
             raise ValueError(
-                f"Linha {linha_atual + 1}: (N RES) aponta para índice inválido "
-                f"({idx}); só há resultados das linhas anteriores."
+                f"Linha {linha_atual + 1}: (N RES) aponta para índice inválido ({idx})"
             )
         offset = idx * 8
-        # Usa r11 (endereço fixo de results) em vez de ldr do literal pool
         if offset > 0:
             text_lines.extend([
                 f"    add r0, r11, #{offset}",
@@ -271,7 +282,6 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         stack_depth += 1
 
     def peek_next_significant(tokens: List[Token], start: int) -> Optional[Token]:
-        """Retorna o primeiro token após `start` que não seja parêntese ou EOF."""
         return next(
             (tokens[j] for j in range(start, len(tokens))
              if tokens[j].tipo not in (TokenType.PARENTESES, TokenType.EOF)),
@@ -279,27 +289,24 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         )
 
     # ------------------------------------------------------------------
-    # Loop principal: percorre cada linha de tokens
+    # Loop principal
     # ------------------------------------------------------------------
 
     for linha_idx, tokens in enumerate(linhas_tokens):
         stack_depth = 0
-        last_literal: Optional[str] = None   # valor do último NUMERO_REAL visto
+        last_literal: Optional[str] = None
         pending_mem_var: Optional[str] = None
 
         text_lines.extend(["", f"    @ ---- linha {linha_idx + 1} ----"])
-        # Restaura SP para o topo da FPU stack limpa (entre linhas)
-        text_lines.append("    mov sp, r7")
+        text_lines.append("    mov sp, r7")   # restaura SP antes de qualquer vpush
 
         i = 0
         while i < len(tokens):
             t = tokens[i]
 
-            # --- Erros léxicos ---
             if t.tipo == TokenType.ERRO:
                 raise ValueError(f"Erro léxico: '{t.valor}' (linha {linha_idx + 1})")
 
-            # --- Tokens estruturais ignorados ---
             if t.tipo in (TokenType.PARENTESES, TokenType.EOF):
                 i += 1
                 continue
@@ -329,17 +336,13 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
                 i += 1
                 continue
 
-            # --- Identificador de memória (nome de variável ou keyword MEM) ---
+            # --- Identificador de memória ---
             if t.tipo == TokenType.MEMORIA:
-
-                # Keyword MEM: finaliza um store explícito (V VARNAME MEM)
-                # Formato da spec: (V VARNAME MEM)
                 if t.valor == "MEM":
                     if pending_mem_var is None:
-                        raise ValueError(
-                            f"Linha {linha_idx + 1}: keyword 'MEM' sem nome de "
-                            f"variável precedente — use (V NOMEVARIAVEL MEM)"
-                        )
+                        raise ValueError(f"Linha {linha_idx + 1}: 'MEM' sem variável precedente")
+                    
+                    # O valor já foi calculado e está no topo da FPU stack
                     emit_store_var(pending_mem_var, linha_idx)
                     pending_mem_var = None
                     last_literal = None
@@ -348,59 +351,40 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
 
                 proximo = peek_next_significant(tokens, i + 1)
 
-                # (V VARNAME MEM) → store explícito via keyword MEM
-                if (proximo is not None
-                        and proximo.tipo == TokenType.MEMORIA
-                        and proximo.valor == "MEM"):
-                    # O valor V já está na pilha; registra o nome para quando
-                    # encontrarmos a keyword MEM no próximo token significativo
+                # Nova regra: O único caso onde NÃO fazemos Load imediato é se o próximo for explicitamente "MEM"
+                if proximo is not None and proximo.tipo == TokenType.MEMORIA and proximo.valor == "MEM":
                     pending_mem_var = t.valor
-                    i += 1
-                    continue
-
-                # (VARNAME) → load: variável sozinha dentro de parênteses
-                # Detectado quando stack_depth == 0 neste contexto,
-                # ou quando o próximo token significativo é um operador
-                if stack_depth == 0 or (
-                    proximo is not None and proximo.tipo == TokenType.OPERADOR
-                ):
-                    emit_load_var(t.valor)
                 else:
-                    # Sem MEM explícito e há valor na pilha: store implícito
-                    # (comportamento de compatibilidade; preferir sempre usar MEM)
-                    emit_store_var(t.valor, linha_idx)
+                    # Para qualquer outro cenário (operador, número, fechamento de parêntese), é um Load
+                    emit_load_var(t.valor)
 
                 last_literal = None
                 i += 1
                 continue
 
             # --- Comando RES ---
+            # --- Comando RES ---
             if t.tipo == TokenType.COMANDO and t.valor == "RES":
-                if last_literal is None:
-                    raise ValueError(
-                        f"Linha {linha_idx + 1}: 'RES' sem número N precedente"
-                    )
-                n = int(float(last_literal))
-                # Remove o N da pilha SEM usar d0 — usa mov direto do valor já
-                # conhecido em tempo de compilação, evitando colisão com registros
-                # de constantes numéricas que também usam d0/r0.
+                stack_depth -= 1  # Retiramos o 'N' da pilha lógica
+                
                 text_lines.extend([
-                    f"    @ descarta N={n} do RES (valor já conhecido)",
-                    "    vpop.f64 {d1}",   # descarta em d1, não d0
+                    "    @ --- COMANDO RES DINÂMICO ---",
+                    "    vpop.f64 {d0}                @ Desempilha N (f64) para d0",
+                    "    vcvtr.s32.f64 s0, d0         @ Converte N para inteiro (s32) em s0",
+                    "    vmov r1, s0                  @ Move o N inteiro para r1",
+                    f"    mov r2, #{linha_idx}         @ r2 = índice da linha atual",
+                    "    subs r3, r2, r1              @ r3 = linha_atual - N",
+                    "    @ Limita a 0 caso r3 < 0 para evitar segmentation fault",
+                    "    cmp r3, #0",
+                    "    movlt r3, #0",
+                    "    @ Calcula o endereço usando r11 (base de results)",
+                    "    add r4, r11, r3, lsl #3      @ r4 = results + (r3 * 8 bytes)",
+                    "    vldr.f64 d0, [r4]            @ Carrega o resultado antigo para d0",
+                    "    vpush.f64 {d0}               @ Empilha o resultado recuperado",
                 ])
-                stack_depth -= 1
+                
+                stack_depth += 1  # Empurramos o resultado recuperado de volta para a pilha lógica
                 last_literal = None
-                # N=0: slot ainda não escrito → retorna 0.0 (spec: N não negativo)
-                if n == 0:
-                    zero_lbl = ensure_const_double("0.0")
-                    text_lines.extend([
-                        f"    ldr r0, ={zero_lbl}    @ (0 RES) → 0.0",
-                        "    vldr.f64 d0, [r0]",
-                        "    vpush.f64 {d0}",
-                    ])
-                    stack_depth += 1
-                else:
-                    emit_load_result(linha_idx - n, linha_idx)
                 i += 1
                 continue
 
@@ -409,44 +393,40 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         if stack_depth != 1:
             raise ValueError(
                 f"Linha {linha_idx + 1}: pilha com {stack_depth} valor(es) ao "
-                f"final — esperado exatamente 1. Verifique a expressão."
+                f"final — esperado exatamente 1."
             )
 
-        # Salva resultado em last_result e em results[linha_idx]
+        # Salva resultado em last_result (r10) e results[linha_idx] (r11+offset)
+        # r12 é usado como temporário para o offset — r11 NUNCA é modificado
         offset = linha_idx * 8
-        text_lines.extend([
-            "    vpop.f64 {d0}",
-            "    vstr.f64 d0, [r10]",        # r10 = &last_result (fixo)
-            "    str r11, [sp, #-4]!",        # salva r11 temporariamente
-            "    add r11, r11, #0",           # placeholder — substituído abaixo
-        ])
-        # Corrige o add com o offset real
-        text_lines.pop()  # remove o placeholder
+        text_lines.append("    vpop.f64 {d0}")
+        text_lines.append("    vstr.f64 d0, [r10]")   # last_result
         if offset > 0:
             text_lines.extend([
                 f"    add r12, r11, #{offset}",
-                "    vstr.f64 d0, [r12]",     # results[linha_idx]
+                "    vstr.f64 d0, [r12]",              # results[linha_idx]
             ])
         else:
             text_lines.append("    vstr.f64 d0, [r11]")  # results[0]
-        text_lines.extend([
-            "    ldr r11, [sp], #4",           # restaura r11
-            "    dsb",
-        ])
+        text_lines.append("    dsb")
 
+    # ------------------------------------------------------------------
+    # Epílogo: decodificador para 4 displays de 7 segmentos
+    # r10 ainda aponta para last_result — sem necessidade de literal pool
+    # ------------------------------------------------------------------
     text_lines.extend([
         "",
         "    @ --- DECODIFICADOR PARA 4 DISPLAYS ---",
-        "    vldr.f64 d0, [r10]",              # usa r10 direto (evita literal pool)
-        "    vcvt.s32.f64 s0, d0",
+        "    vldr.f64 d0, [r10]",              # lê last_result via r10 (sem ldr literal)
+        "    vcvt.s32.f64 s0, d0",             # converte double → inteiro (trunca)
         "    vmov r1, s0",
-        "    ldr r2, =0xFF200020",
+        "    ldr r2, =0xFF200020",             # endereço HEX3-HEX0
         "    ldr r3, =display_lut",
-        "    mov r4, #0",
+        "    mov r4, #0",                      # acumulador dos 4 dígitos
         "",
         "    @ HEX0 (unidades)",
         "    and r6, r1, #0xF",
-        "    ldr r5, [r3, r6, lsl #2]",      # usa r5 em vez de r7
+        "    ldr r5, [r3, r6, lsl #2]",        # r5 em vez de r7 (preserva SP base)
         "    orr r4, r4, r5",
         "",
         "    @ HEX1 (dezenas)",
@@ -470,7 +450,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         "    lsl r5, r5, #24",
         "    orr r4, r4, r5",
         "",
-        "    str r4, [r2]",
+        "    str r4, [r2]",                    # escreve nos 4 displays de uma vez
         "",
         "fim:",
         "    bkpt",
@@ -493,7 +473,6 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
 # ---------------------------------------------------------------------------
 
 def testarLerArquivo() -> None:
-    """Lê teste1.txt da pasta arquivosTeste e imprime as linhas encontradas."""
     print("=" * 60)
     print("TESTE: testarLerArquivo()")
     print("=" * 60)
@@ -519,110 +498,85 @@ def testarLerArquivo() -> None:
 
 
 def testarGerarAssembly() -> None:
-    """
-    Gera e valida Assembly para as expressões de teste do professor.
-    Verifica que:
-      - o código é gerado sem exceção,
-      - o rótulo last_result aparece na seção .data,
-      - o rótulo results aparece na seção .data,
-      - vpop.f64 e vstr ocorrem para cada linha,
-      - a inicialização da FPU (fpexc) está presente.
-    """
     print("=" * 60)
     print("TESTE: testarGerarAssembly()")
     print("=" * 60)
 
     casos: List[dict] = [
-        # ----------------------------------------------------------------
-        # Casos básicos
-        # ----------------------------------------------------------------
         {
-            "desc": "Soma simples (3.14 + 2.0)",
-            "expr": ["(3.14 2.0 +)"],
+            "desc": "Soma simples (3.5 + 2.0) = 5.5",
+            "expr": ["(3.5 2.0 +)"],
             "esperado_em": ["vadd.f64", "last_result", "results"],
         },
         {
-            "desc": "Subtração (10.0 - 3.5)",
+            "desc": "Subtração (10.0 - 3.5) = 6.5",
             "expr": ["(10.0 3.5 -)"],
             "esperado_em": ["vsub.f64"],
         },
         {
-            "desc": "Multiplicação (1.5 * 2.0)",
+            "desc": "Multiplicação (1.5 * 2.0) = 3.0",
             "expr": ["(1.5 2.0 *)"],
             "esperado_em": ["vmul.f64"],
         },
         {
-            "desc": "Divisão real (7.0 / 2.0)",
+            "desc": "Divisão real (7.0 / 2.0) = 3.5",
             "expr": ["(7.0 2.0 /)"],
             "esperado_em": ["vdiv.f64"],
         },
         {
-            "desc": "Divisão inteira (7.0 // 2.0)",
+            "desc": "Divisão inteira (7.0 // 2.0) = 3.0",
             "expr": ["(7.0 2.0 //)"],
             "esperado_em": ["vcvtr.s32.f64"],
         },
         {
-            "desc": "Resto (7.0 % 3.0)",
+            "desc": "Resto (7.0 % 3.0) = 1.0",
             "expr": ["(7.0 3.0 %)"],
             "esperado_em": ["vsub.f64 d2, d0, d3"],
         },
         {
-            "desc": "Potenciação (2.0 ^ 3)",
+            "desc": "Potenciação (2.0 ^ 3) = 8.0",
             "expr": ["(2.0 3.0 ^)"],
-            "esperado_em": ["pow_loop", "pow_done", "vmul.f64 d2, d2, d0"],
+            "esperado_em": ["pow_loop", "pow_done", "vmov r9, s4"],
         },
-        # ----------------------------------------------------------------
-        # Expressões aninhadas
-        # ----------------------------------------------------------------
         {
-            "desc": "Divisão de produtos aninhada ((1.5*2.0)/(3.0*4.0))",
+            "desc": "Expressão aninhada ((1.5*2.0)/(3.0*4.0))",
             "expr": ["((1.5 2.0 *) (3.0 4.0 *) /)"],
             "esperado_em": ["vmul.f64", "vdiv.f64"],
         },
-        # ----------------------------------------------------------------
-        # Comandos especiais
-        # ----------------------------------------------------------------
         {
             "desc": "Store explícito (5.0 TOTAL MEM)",
             "expr": ["(5.0 TOTAL MEM)"],
             "esperado_em": ["var_TOTAL", "vstr.f64"],
         },
         {
-            "desc": "Load de variável ((TOTAL))",
-            "expr": [
-                "(5.0 TOTAL MEM)",
-                "(TOTAL)",
-            ],
+            "desc": "Load de variável após store",
+            "expr": ["(5.0 TOTAL MEM)", "(TOTAL)"],
             "esperado_em": ["var_TOTAL", "vldr.f64"],
         },
         {
             "desc": "RES referenciando linha anterior",
-            "expr": [
-                "(3.0 2.0 +)",
-                "(2 RES)",
-            ],
-            # (2 RES) na linha 2 aponta para results[0]  (2 linhas atrás → idx 2-2=0)
-            "esperado_em": ["results", "descarta N do RES"],
+            "expr": ["(3.0 2.0 +)", "(2 RES)"],
+            "esperado_em": ["descarta N=2", "r11"],
         },
-        # ----------------------------------------------------------------
-        # Inicialização da FPU
-        # ----------------------------------------------------------------
         {
-            "desc": "FPU habilitada",
+            "desc": "(0 RES) retorna 0.0",
+            "expr": ["(1.0 2.0 +)", "(0 RES)"],
+            "esperado_em": ["(0 RES) → 0.0"],
+        },
+        {
+            "desc": "FPU habilitada com CP10+CP11",
             "expr": ["(1.0 2.0 +)"],
             "esperado_em": ["vmsr fpexc, r0", "0xF00000"],
         },
-        # ----------------------------------------------------------------
-        # Multiplas linhas — last_result deve ter o valor da última linha
-        # ----------------------------------------------------------------
         {
-            "desc": "Três linhas: resultado final é da última",
-            "expr": [
-                "(1.0 2.0 +)",
-                "(3.0 4.0 *)",
-                "(5.0 1.0 -)",
-            ],
-            "esperado_em": ["last_result", "results"],
+            "desc": "r10 e r11 carregados no prólogo",
+            "expr": ["(1.0 2.0 +)"],
+            "esperado_em": ["ldr r10, =last_result", "ldr r11, =results"],
+        },
+        {
+            "desc": "Display usa r5 (não r7) e r10 direto",
+            "expr": ["(1.0 2.0 +)"],
+            "esperado_em": ["vldr.f64 d0, [r10]", "ldr r5, [r3"],
         },
     ]
 
@@ -640,7 +594,7 @@ def testarGerarAssembly() -> None:
         ok = True
         for frag in caso.get("esperado_em", []):
             if frag not in asm:
-                print(f"    FALHOU: fragmento esperado nao encontrado: '{frag}'")
+                print(f"    FALHOU: fragmento ausente: '{frag}'")
                 ok = False
                 falhas += 1
         if ok:
@@ -648,32 +602,21 @@ def testarGerarAssembly() -> None:
         else:
             print()
 
-    # ----------------------------------------------------------------
-    # Casos inválidos — devem levantar ValueError
-    # ----------------------------------------------------------------
+    # Casos inválidos
     print("  [Casos inválidos — devem lançar ValueError]")
-    invalidos: List[dict] = [
-        {
-            "desc": "RES sem número precedente",
-            "tokens": [Token(TokenType.COMANDO, "RES")],
-        },
-        {
-            "desc": "Operador + com pilha vazia",
-            "tokens": [Token(TokenType.OPERADOR, "+")],
-        },
-        {
-            "desc": "Operador * com apenas 1 operando",
-            "tokens": [
-                Token(TokenType.NUMERO_REAL, "2.0"),
-                Token(TokenType.OPERADOR, "*"),
-            ],
-        },
+    invalidos = [
+        {"desc": "RES sem número precedente",
+         "tokens": [Token(TokenType.COMANDO, "RES")]},
+        {"desc": "Operador + com pilha vazia",
+         "tokens": [Token(TokenType.OPERADOR, "+")]},
+        {"desc": "Operador * com apenas 1 operando",
+         "tokens": [Token(TokenType.NUMERO_REAL, "2.0"), Token(TokenType.OPERADOR, "*")]},
     ]
     for caso in invalidos:
         print(f"  [{caso['desc']}]")
         try:
             gerarAssembly([caso["tokens"]], nomeArquivoSaida=None)
-            print("    FALHOU: deveria ter lançado ValueError mas nao lançou\n")
+            print("    FALHOU: deveria ter lançado ValueError\n")
             falhas += 1
         except ValueError as e:
             print(f"    OK — ValueError: {e}\n")
@@ -682,12 +625,12 @@ def testarGerarAssembly() -> None:
             falhas += 1
 
     print("=" * 60)
+    total = len(casos) + len(invalidos)
     if falhas == 0:
-        print(f"TODOS OS TESTES PASSARAM ({len(casos) + len(invalidos)} casos)")
+        print(f"TODOS OS TESTES PASSARAM ({total} casos)")
     else:
-        print(f"FALHAS: {falhas} de {len(casos) + len(invalidos)} casos")
+        print(f"FALHAS: {falhas} de {total} casos")
     print("=" * 60)
-    print()
 
 
 # ---------------------------------------------------------------------------
@@ -705,3 +648,4 @@ if __name__ == "__main__":
     lerArquivo(sys.argv[1], linhas)
     tokens_por_linha = [parseExpressao(linha) for linha in linhas]
     print(gerarAssembly(tokens_por_linha))
+    

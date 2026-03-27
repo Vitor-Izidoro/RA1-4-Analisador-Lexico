@@ -143,7 +143,8 @@ def estadoDecimal(ctx):
 def estadoPalavra(ctx):
     char = ctx.char_atual()
 
-    if char.isalpha():
+    # Adicionamos a permissão explícita para o underscore
+    if char.isalpha() or char == "_":
         ctx.buffer += char
         ctx.avancar()
         return estadoPalavra
@@ -151,13 +152,10 @@ def estadoPalavra(ctx):
     elif char.isspace() or char in "()":
         if ctx.buffer == "RES":
             ctx.adicionar_token(TokenType.COMANDO, ctx.buffer)
-
         elif ctx.buffer.isupper():
             ctx.adicionar_token(TokenType.MEMORIA, ctx.buffer)
-
         else:
             return estadoErro
-
         return estadoInicial
 
     else:
