@@ -1,7 +1,7 @@
 # RA1-4: Analisador Léxico e Gerador Assembly ARMv7 (RPN)
 
-**Instituição:** [Substitua pelo Nome da Sua Instituição, ex: PUCPR]  
-**Disciplina:** Interpretadores B - Noite  
+**Instituição:** PUCPR  
+**Disciplina:** Construção de interpretadores - Turma B - Noite  
 **Professor:** Frank Coelho de Alcântara  
 **Grupo no Canvas:** RA1-4  
 
@@ -61,4 +61,21 @@ O projeto possui um orquestrador central (`main.py`) que gerencia todo o fluxo d
 
 **Exemplo de comando:**
 ```bash
-python main.py "assembly copy/arquivosTeste/teste_arquitetura.txt"
+python main.py "assembly copy/arquivosTeste/teste1.txt"
+```
+##  Regras Estritas de Sintaxe (Aviso para Testes)
+
+Devido à natureza determinística do Autômato Finito construído, a linguagem exige **separação explícita por espaços** entre todos os operandos, operadores e parênteses que não façam parte do mesmo identificador.
+*  **Incorreto:** `(2.0 3.0+)` ou `(1.0RES)`
+*  **Correto:** `( 2.0 3.0 + )` ou `( 1.0 RES )`
+
+A ausência de espaços fará com que a Máquina de Estados interprete a cadeia como um token inválido, disparando um Erro Léxico e abortando a compilação por segurança.
+
+---
+
+## Testando no Simulador (CPULATOR)
+
+1. Acesse o [CPULATOR ARMv7]([https://cpulator.01xz.net/?sys=arm-de1soc](https://cpulator.01xz.net/?sys=arm-de1soc&d_audio=48000)).
+2. Limpe o editor padrão e cole todo o conteúdo do arquivo `saida.s`.
+3. Pressione **F5** (Compile and Load) para invocar o montador.
+4. Pressione **F2** (Run) para executar.
