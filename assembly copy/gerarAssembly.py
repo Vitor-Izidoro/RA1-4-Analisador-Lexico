@@ -26,16 +26,13 @@ if MAQUINA_DIR is None:
 
 sys.path.insert(0, str(MAQUINA_DIR))
 
-from tokens import Token, TokenType  # noqa: E402
-from lexer import parseExpressao     # noqa: E402
+from tokens import Token, TokenType  
+from lexer import parseExpressao     
 
-
-# ---------------------------------------------------------------------------
 # lerArquivo
-# ---------------------------------------------------------------------------
 
 def lerArquivo(nomeArquivo: str, linhas: list) -> None:
-    """Lê o arquivo de expressões e popula `linhas` ignorando linhas vazias."""
+    """Lê o arquivo de expressões e popula linhas ignorando linhas vazias."""
     informado = Path(nomeArquivo)
 
     candidatos: List[Path] = [informado, SCRIPT_DIR / informado, PROJECT_ROOT / informado]
@@ -52,10 +49,7 @@ def lerArquivo(nomeArquivo: str, linhas: list) -> None:
             if linha.strip():
                 linhas.append(linha.strip())
 
-
-# ---------------------------------------------------------------------------
 # gerarAssembly
-# ---------------------------------------------------------------------------
 
 def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
     """
@@ -78,9 +72,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
 
     num_linhas = len(linhas_tokens)
 
-    # -----------------------------------------------------------------
     # Seção .data
-    # -----------------------------------------------------------------
     data_lines: List[str] = [
         ".global _start",
         ".section .data",
@@ -93,9 +85,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         ".balign 8",   # garante alinhamento 8 bytes para todas as constantes double
     ]
 
-    # -----------------------------------------------------------------
     # Seção .text
-    # -----------------------------------------------------------------
     text_lines: List[str] = [
         ".section .text",
         ".global _start",
@@ -119,10 +109,8 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
     contador_rotulo: int = 0
     vars_memoria: Dict[str, str] = {}
     const_cache: Dict[str, str] = {}
-
-    # ------------------------------------------------------------------
+    
     # Helpers .data
-    # ------------------------------------------------------------------
 
     def get_unique_label(prefix: str) -> str:
         nonlocal contador_rotulo
@@ -144,7 +132,6 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         if normalizado not in const_cache:
             nome = f"const_{contador_const}"
             const_cache[normalizado] = nome
-            # AQUI ESTAVA O ERRO: Use 'normalizado' em vez de 'valor_str'
             data_lines.extend([".balign 8", f"{nome}: .double {normalizado}"])
             contador_const += 1
         return const_cache[normalizado]
@@ -156,9 +143,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
             data_lines.extend([".balign 8", f"{label}: .double 0.0"])
         return vars_memoria[nome]
 
-    # ------------------------------------------------------------------
     # Emissores .text
-    # ------------------------------------------------------------------
 
     def emit_push_const_double(valor_str: str) -> None:
         nome = ensure_const_double(valor_str)
@@ -226,7 +211,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
             "    vpop.f64 {d1}",
             "    vpop.f64 {d0}",
             "    vcvtr.s32.f64 s4, d1",
-            "    vmov r9, s4",             # r9 = contador (não colide com r1)
+            "    vmov r9, s4",            
             f"    ldr r0, ={one_lbl}",
             "    vldr.f64 d2, [r0]",
             "    cmp r9, #0",
@@ -246,7 +231,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
         nonlocal stack_depth
         label = ensure_var_memoria(nome)
         text_lines.extend([
-            f"    ldr r6, ={label}",       # r6 em vez de r0
+            f"    ldr r6, ={label}",       
             "    vldr.f64 d0, [r6]",
             "    vpush.f64 {d0}",
         ])
@@ -292,9 +277,7 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
             None,
         )
 
-    # ------------------------------------------------------------------
-    # Loop principal
-    # ------------------------------------------------------------------
+    # Loop principal-------------------------
 
     for linha_idx, tokens in enumerate(linhas_tokens):
         stack_depth = 0
@@ -400,9 +383,8 @@ def gerarAssembly(tokens_por_linha, nomeArquivoSaida: str = "saida.s") -> str:
             text_lines.append("    vstr.f64 d0, [r11]")  # results[0]
         text_lines.append("    dsb")
 
-    # ------------------------------------------------------------------
-    # Epílogo: decodificador para 4 displays de 7 segmentos
-    # r10 ainda aponta para last_result — sem necessidade de literal pool
+
+    # r10 ainda aponta para last_result — sem necessidade de literal pool e  decodificador para 4 displays de 7 segmentos
     # ------------------------------------------------------------------
     text_lines.extend([
         "",
@@ -623,9 +605,7 @@ def testarGerarAssembly() -> None:
     print("=" * 60)
 
 
-# ---------------------------------------------------------------------------
 # Ponto de entrada
-# ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
