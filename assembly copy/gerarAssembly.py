@@ -528,12 +528,12 @@ def testarGerarAssembly() -> None:
         {
             "desc": "RES referenciando linha anterior",
             "expr": ["(3.0 2.0 +)", "(2 RES)"],
-            "esperado_em": ["descarta N=2", "r11"],
+            "esperado_em": ["COMANDO RES DINÂMICO", "subs r3, r2, r1", "r11"],
         },
         {
-            "desc": "(0 RES) retorna 0.0",
-            "expr": ["(1.0 2.0 +)", "(0 RES)"],
-            "esperado_em": ["(0 RES) → 0.0"],
+            "desc": "RES com trava de limite de memória (Clamp)",
+            "expr": ["(1.0 2.0 +)", "(1 RES)"],
+            "esperado_em": ["cmp r3, #0", "movlt r3, #0", "lsl #3"],
         },
         {
             "desc": "FPU habilitada com CP10+CP11",
