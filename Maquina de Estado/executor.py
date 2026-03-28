@@ -11,7 +11,7 @@
 # =============================================================================
 from tokens import TokenType
 
-# Nova função auxiliar: resolve o valor apenas na hora exata de usar (Lazy Evaluation)
+# Nova função auxiliar: resolve o valor apenas na hora exata de usar
 def resolver_valor(item, memoria_global):
     """
     Se o item for uma referência a uma variável (ex: ("VAR", "TOTAL")),
@@ -77,7 +77,7 @@ def executarExpressao(tokens, memoria_global, historico_resultados, linha_atual)
             i += 1
             continue
             
-        # 4. Memória (Load ou Store) - Agora usando regras PURAS de Pilha RPN
+        # 4. Memória (Load ou Store) - Agora usando regras de Pilha RPN
         if t.tipo == TokenType.MEMORIA:
             if t.valor == "MEM":
                 # É um comando de STORE explícito. 
@@ -105,7 +105,7 @@ def executarExpressao(tokens, memoria_global, historico_resultados, linha_atual)
                 
             else:
                 # É apenas o NOME de uma variável (ex: X, TOTAL). 
-                # Empilha como uma "Referência Preguiçosa" (Lazy Reference). Não tentamos ler nem escrever agora!
+                # Empilha como. Não tentamos ler nem escrever agora.
                 pilha.append(("VAR", t.valor))
                 
             i += 1
