@@ -22,7 +22,7 @@ sys.path.insert(0, str(ROOT_DIR / "assembly copy"))
 # --- IMPORTS DOS MÓDULOS
 from lexer import parseExpressao             
 from executor import executarExpressao       
-from gerarAssembly import gerarAssembly, lerArquivo 
+from gerarAssembly import gerarAssembly, lerArquivo, testarLerArquivo, testarGerarAssembly 
 
 def exibirResultados(linhas_tokens):
     memoria_global = {}
@@ -52,6 +52,11 @@ def salvar_tokens_json(tokens_por_linha, nome_arquivo="tokens_gerados.json"):
 # --- FLUXO PRINCIPAL ---
 if __name__ == "__main__":
     if len(sys.argv) < 2:
+        # caso queira fazer testes, descomentar as linhas a baixo
+        # print("Nenhum arquivo informado. Executando testes internos automáticos...\n")
+        # testarLerArquivo()
+        # testarGerarAssembly()
+        
         print("Uso correto: python main.py <caminho_do_arquivo.txt>")
         sys.exit(1)
 
